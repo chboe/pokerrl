@@ -1,10 +1,13 @@
 import math
 import random
-import torch.nn as nn
 import torch.nn.functional as F
 import torch
+import torch.optim as optim
 from torch.autograd import Variable
+from types import ReplayMemory, Network
 
+
+#HYPER PARAMS
 MRL_SIZE = 600000
 MSL_SIZE = 3000000
 RL_LR = 0.1
@@ -17,9 +20,6 @@ EPS_START = 0.08
 EPS_END = 0
 EPS_DECAY = EPISODES
 
-steps_done = 0
-update_count = 0
-
 # if gpu is to be used
 use_cuda = torch.cuda.is_available()
 FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
@@ -27,37 +27,17 @@ LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
 ByteTensor = torch.cuda.ByteTensor if use_cuda else torch.ByteTensor
 Tensor = FloatTensor
 
-
-class ReplayMemory:
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.memory = []
-
-    def push(self, transition):
-        self.memory.append(transition)
-        if len(self.memory) > self.capacity:
-            del self.memory[0]
-
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-
-
-class Network(nn.Module):
-    def __init__(self):
-        nn.Module.__init__(self)
-        self.l1 = nn.Linear(2, 1024)
-        self.l2 = nn.Linear(1024, 512)
-        self.l3 = nn.Linear(512, 1024)
-        self.l4 = nn.Linear(1024, 512)
-        self.l5 = nn.Linear(512, 3)
-
-    def forward(self, x):
-        x = F.relu(self.l1(x))
-        x = F.relu(self.l2(x))
-        x = F.relu(self.l3(x))
-        x = F.relu(self.l4(x))
-        x = self.l5(x)
-        return x
+#Initializing everything
+steps_done = 0
+update_count = 0
+mrl = ReplayMemory(MRL_SIZE)
+msl = ReplayMemory(MSL_SIZE)
+averagePolicyNetwork = Network()
+qNetwork = Network()
+targetPolicyNetwork = Network()
+targetPolicyNetwork.load_state_dict(qNetwork.state_dict())
+qNetworkOptimizer = optim.SGD(qNetwork.parameters(), RL_LR)
+averagePolicyNetworkOptimizer = optim.SGD(averagePolicyNetwork.parameters(), SL_LR)
 
 
 def select_action(currentPolicy, state, usingQpolicy):
@@ -71,17 +51,49 @@ def select_action(currentPolicy, state, usingQpolicy):
         return LongTensor([[random.randrange(3)]])
 
 
+def learnAveragePolicyNetwork():
+    if len(msl) < BATCH_SIZE:
+        return
+
+    transitions = msl.sample(BATCH_SIZE)
+    batch_state, batch_action = zip(*transitions)
+
+    batch_state = Variable(torch.cat(batch_state))
+    batch_action = Variable(torch.cat(batch_action))
+
+    loss = -math.log(qNetwork(batch_state).gather(1, batch_action))
+
+    averagePolicyNetworkOptimizer.zero_grad()
+    loss.backward()
+    averagePolicyNetworkOptimizer.step()
+
+
+def learnQNetwork():
+    if len(mrl) < BATCH_SIZE:
+        return
+
+    transitions = mrl.sample(BATCH_SIZE)
+    batch_state, batch_action, batch_next_state, batch_reward = zip(*transitions)
+
+    batch_state = Variable(torch.cat(batch_state))
+    batch_action = Variable(torch.cat(batch_action))
+    batch_reward = Variable(torch.cat(batch_reward))
+    batch_next_state = Variable(torch.cat(batch_next_state))
+
+    current_q_values = qNetwork(batch_state).gather(1, batch_action)
+    max_next_q_values = targetPolicyNetwork(batch_next_state).detach().max(1)[0]
+    expected_q_values = batch_reward + max_next_q_values
+    loss = F.mse_loss(current_q_values, expected_q_values.view(-1, 1))
+
+    qNetworkOptimizer.zero_grad()
+    loss.backward()
+    qNetworkOptimizer.step()
+
+
 def RunAgent(game):
-    global update_count
-    mrl = ReplayMemory(MRL_SIZE)
-    msl = ReplayMemory(MSL_SIZE)
-    averagePolicyNetwork = Network()
-    qNetwork = Network()
-    targetPolicyNetwork = Network()
-    targetPolicyNetwork.load_state_dict(qNetwork.state_dict())
     for e in range(EPISODES):
 
-        if (random.uniform(0, 1) < ANTICIPATORY_PARAM):
+        if random.uniform(0, 1) < ANTICIPATORY_PARAM:
             currentPolicy = qNetwork()
             usingQPolicy = True
         else:
@@ -94,10 +106,11 @@ def RunAgent(game):
 
         mrl.push((state, action, reward_next, state_next))
 
-        if (usingQPolicy):
+        if usingQPolicy:
             msl.push((state, action))
 
-        # TODO POLICY GRADIENT
+        learnAveragePolicyNetwork()
+        learnQNetwork()
 
         update_count += 1
         if update_count == TARGET_POLICY_UPDATE_INTERVAL:
