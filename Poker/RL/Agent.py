@@ -48,8 +48,9 @@ class Agent:
 
 
     def select_action(self, state):
-        if random.uniform(0, 1) > self.EPS and self.currentPolicy == self.qNetwork:
-            return self.currentPolicy(Variable(state).type(self.FloatTensor)).data.max(1)[1].view(1, 1)
+        if self.currentPolicy == self.qNetwork and random.uniform(0, 1) > self.EPS:
+            pred = self.currentPolicy(Variable(state).type(FloatTensor))
+            return pred.data.max(1)[1].view(1, 1)
         else:
             return LongTensor([[random.randrange(3)]])
 
@@ -76,10 +77,10 @@ class Agent:
         transitions = self.mrl.sample(self.BATCH_SIZE)
         batch_state, batch_action, batch_next_state, batch_reward = zip(*transitions)
 
-        batch_state = Variable(torch.cat(batch_state))
-        batch_action = Variable(torch.cat(batch_action))
-        batch_reward = Variable(torch.cat(batch_reward))
-        batch_next_state = Variable(torch.cat(batch_next_state))
+        batch_state = torch.cat(batch_state)
+        batch_action = torch.cat(batch_action)
+        batch_reward = torch.cat(batch_reward)
+        batch_next_state = torch.cat(batch_next_state)
 
         current_q_values = self.qNetwork(batch_state).gather(1, batch_action)
         max_next_q_values = self.targetPolicyNetwork(batch_next_state).detach().max(1)[0]
@@ -99,17 +100,18 @@ class Agent:
             self.currentPolicy = self.averagePolicyNetwork
 
     def getAction(self):
-        self.action = self.select_action(self.state)
+        self.action = self.select_action(FloatTensor(self.state)[None, :])
+        return self.action
 
     def learn(self, next_state, next_reward):
         if self.state == None:
             self.state = next_state
             return
 
-        self.mrl.push((self.state, self.action, next_state, next_reward))
+        self.mrl.push((self.state[None, :], self.action, next_state[None, :], FloatTensor([next_reward])))
 
         if self.currentPolicy == self.qNetwork:
-            self.msl.push((self.state, self.action))
+            self.msl.push((self.state[None, :], self.action))
 
         self.learnAveragePolicyNetwork()
         self.learnQNetwork()

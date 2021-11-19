@@ -5,6 +5,8 @@ import numpy as np
 from RL.Agent import Agent
 from Player import Player
 import torch
+from Card import Card
+from Score_Detector import HoldemPokerScoreDetector
 
 
 # if gpu is to be used
@@ -15,15 +17,9 @@ ByteTensor = torch.cuda.ByteTensor if use_cuda else torch.ByteTensor
 Tensor = FloatTensor
 
 
-class ACTION(Enum):
-    FOLD = 0
-    CALL = 1
-    RAISE = 2
-
-
 class ActionEncoding():
     def __init__(self, playerIndex: int, round: int, nRaises: int,
-                action: ACTION):
+                action: int):
         self.playerIndex = playerIndex
         self.round = round
         self.nRaises = nRaises
@@ -38,38 +34,30 @@ class LHEHand:
         self.playerTurn = self.smallBlindIndex #2P
 
         while not self._roundOver():
-            print("\n\n")
-            print(self.get_relative_player_state())
-            print("\n\n")
             relativePlayerState = Tensor(self.get_relative_player_state())
             self.playersInHand[self.playerTurn].agent.learn(relativePlayerState, 0)
-            action = self.playersInHand[self.playerTurn].agent.getAction()
+            action = self.playersInHand[self.playerTurn].agent.getAction()[0][0].item()
             self.performAction(action)
             self.playerTurn = 1 - self.playerTurn # rotate turns 2P
 
-        if len(self.playersInHand) == 1: #2P
-            amount = self.playerOut[0].pot #2P
-            terminalState = Tensor(np.zeros(288))
-            self.playerOut[0].agent.learn(terminalState, amount)
-            self.playersInHand[0].agent.learn(terminalState, amount)
-
 
     def performAction(self, action):
-        if self.nRaises == 4 and action == ACTION.RAISE:
-            action = ACTION.CALL
+        if self.nRaises == 4 and action == 2:
+            action = 1
 
-        if action == ACTION.RAISE:
+        if action == 2:
             betSize = 1 if self.round <= 1 else 2
             self.playersInHand[self.playerTurn].pot = self.playersInHand[1-self.playerTurn].pot + betSize
             self.bettingState[self.playerTurn][self.round][self.nRaises][1] = 1
             self.nRaises += 1
 
-        if action == ACTION.CALL:
+        if action == 1:
             self.playersInHand[self.playerTurn].pot = self.playersInHand[1-self.playerTurn].pot
             self.bettingState[self.playerTurn][self.round][self.nRaises][0] = 1
 
-        if action == ACTION.FOLD:
-            self.playersOut.append(self.playersInHand.pop(self.playerTurn)) # 2P
+        if action == 0:
+            self.playerOut.append(self.playersInHand.pop(self.playerTurn)) # 2P
+            self.winner = 1 - self.playerTurn
 
         actionEncoding = ActionEncoding(self.playerTurn, self.round, self.nRaises, action)
         self.bettingHistory.append(actionEncoding)
@@ -78,7 +66,13 @@ class LHEHand:
     def _roundOver(self):
         if len(self.playersInHand) == 1:
             return True
-        if self.nRaises == 4 and self.bettingHistory[-1].action != ACTION.RAISE:  #2P
+        if self.nRaises == 0 and len(self.bettingHistory) >= 2 and \
+            self.bettingHistory[-1].round == self.round and \
+            self.bettingHistory[-2].round == self.round and \
+            self.bettingHistory[-1].action == 1 and \
+            self.bettingHistory[-2].action == 1:
+            return True
+        if self.nRaises >= 1 and self.bettingHistory[-1].action == 1:
             return True
         return False
 
@@ -87,10 +81,12 @@ class LHEHand:
         bh = np.vstack((self.bettingState[self.playerTurn:],self.bettingState[:self.playerTurn]))
         ownCards = self.playerHands[self.playerTurn]
         commCards = np.array((self.flop, self.turn, self.river))
-        # print(np.ravel(bh))
-        # print(np.ravel(ownCards))
-        # print(commCards)
-        return np.ravel((bh,ownCards,commCards))
+
+        bh = np.ravel(bh)
+        ownCards = np.ravel(ownCards)
+        commCards = np.ravel(commCards)
+
+        return np.concatenate((bh,ownCards,commCards))
 
 
     def __init__(self, smallBlind: int, smallBlindIndex: int, playersInHand: List[Player]):
@@ -103,14 +99,16 @@ class LHEHand:
 
         #Initialize vars
         self.bettingHistory: List[ActionEncoding] = []
-        self.bettingState = np.zeros((len(playersInHand),4,5,2)) #2P
+        self.bettingState = np.zeros((2,4,5,2)) #2P
         self.playerHands = []
+        self._playerHands = [] # Card Object representation
+        self._communityCards = [] # Card Object representation
         self.flop = np.zeros(52)
         self.turn = np.zeros(52)
         self.river = np.zeros(52)
         self.nRaises = 0
         self.round = 0
-        self.playerTurn = 0
+        self.playerTurn = self.smallBlindIndex
         self.deck = Deck()
 
         # Make agents do pre episode tasks
@@ -123,31 +121,54 @@ class LHEHand:
         for player in self.playersInHand:
             playerHand = [0]*52
             playerCards = self.deck.pop_cards(2)
+            self._playerHands.append(playerCards)
             for card in playerCards:
-                playerHand[card.rank-2+card.suit*13] = 1
+                playerHand[card.rank-2+card.suit*13] = 1.0
                 self.playerHands.append(playerHand)
         self.playRound(0)
 
         # Flop
         flopCards = self.deck.pop_cards(3)
+        self._communityCards += flopCards
         for card in flopCards:
             self.flop[card.rank-2+card.suit*13] = 1
         self.playRound(1)
 
         # Turn
         turnCard = self.deck.pop_cards(1)[0]
+        self._communityCards += [turnCard]
         self.turn[turnCard.rank-2+turnCard.suit*13] = 1
         self.playRound(2)
 
         # River
         riverCard = self.deck.pop_cards(1)[0]
+        self._communityCards += [riverCard]
         self.river[riverCard.rank-2+riverCard.suit*13] = 1
         self.playRound(3)
 
-        if len(self.playersInHand) > 1: #2P
-            wonAmount = self.playerOut[0].pot #2P
-            lostAmount = self.playerOut[0].pot #2P
+        if len(self.playersInHand) == 1: #2P
+            amount = self.playerOut[0].pot #2P
             terminalState = Tensor(np.zeros(288))
+            self.playerOut[0].agent.learn(terminalState, -amount)
+            self.playersInHand[0].agent.learn(terminalState, amount)
 
-            self.playerOut[0].agent.learn(terminalState,0)
-            self.playersInHand[0].agent.learn(terminalState,0)
+        elif len(self.playersInHand) > 1: #2P
+            amount = self.playersInHand[0].pot #2P
+            terminalState = Tensor(np.zeros(288))
+            for player_hand in self._playerHands:
+                player_hand += self._communityCards
+
+            score_detector = HoldemPokerScoreDetector()
+            p0_score = score_detector.get_score(self._playerHands[0])
+            p1_score = score_detector.get_score(self._playerHands[1])
+            cmp = p0_score.cmp(p1_score)
+
+            if cmp == 1:
+                self.winner = 0
+            elif cmp == 0:
+                self.winner = -1
+            else:
+                self.winner = 1
+            betSize = self.playersInHand[0].pot
+            self.playersInHand[0].agent.learn(terminalState, cmp*betSize)
+            self.playersInHand[1].agent.learn(terminalState, -cmp*betSize)

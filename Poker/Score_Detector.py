@@ -1,7 +1,6 @@
 import collections
 from typing import List, Dict, Optional
-
-from .Card import Card
+from Card import Card
 
 
 class Cards:
@@ -150,63 +149,6 @@ class Score:
         }
 
 
-class TraditionalPokerScore(Score):
-    NO_PAIR = 0
-    PAIR = 1
-    TWO_PAIR = 2
-    TRIPS = 3
-    STRAIGHT = 4
-    FULL_HOUSE = 5
-    FLUSH = 6
-    QUADS = 7
-    STRAIGHT_FLUSH = 8
-
-    @property
-    def strength(self) -> int:
-        strength = self.category
-        for offset in range(5):
-            strength <<= 4
-            try:
-                strength += self.cards[offset].rank
-            except IndexError:
-                pass
-        for offset in range(5):
-            strength <<= 2
-            try:
-                strength += self.cards[offset].suit
-            except IndexError:
-                pass
-        return strength
-
-    def cmp(self, other):
-        # Same score, compare the list of cards
-        cards1 = self.cards
-        cards2 = other.cards
-
-        # In a traditional poker, royal flushes are weaker than minimum straight flushes
-        # This is done so you are not mathematically sure to have the strongest hand.
-        if self.category == TraditionalPokerScore.STRAIGHT_FLUSH:
-            if TraditionalPokerScore._straight_is_max(cards1) and TraditionalPokerScore._straight_is_min(cards2):
-                return -1
-            elif TraditionalPokerScore._straight_is_min(cards1) and TraditionalPokerScore._straight_is_max(cards2):
-                return 1
-
-        if self.strength < other.strength:
-            return -1
-        elif self.strength > other.strength:
-            return 1
-        else:
-            return 0
-
-    @staticmethod
-    def _straight_is_min(straight_sequence) -> bool:
-        return straight_sequence[4].rank == 14
-
-    @staticmethod
-    def _straight_is_max(straight_sequence) -> bool:
-        return straight_sequence[0].rank == 14
-
-
 class HoldemPokerScore(Score):
     NO_PAIR = 0
     PAIR = 1
@@ -241,34 +183,6 @@ class HoldemPokerScore(Score):
 class ScoreDetector:
     def get_score(self, cards: List[Card]):
         raise NotImplemented
-
-
-class TraditionalPokerScoreDetector(ScoreDetector):
-    def __init__(self, lowest_rank):
-        self._lowest_rank = lowest_rank
-
-    def get_score(self, cards):
-        cards = Cards(cards, self._lowest_rank)
-
-        score_functions = [
-            (TraditionalPokerScore.STRAIGHT_FLUSH,  cards.straight_flush),
-            (TraditionalPokerScore.QUADS,           cards.quads),
-            (TraditionalPokerScore.FLUSH,           cards.flush),
-            (TraditionalPokerScore.FULL_HOUSE,      cards.full_house),
-            (TraditionalPokerScore.STRAIGHT,        cards.straight),
-            (TraditionalPokerScore.TRIPS,           cards.trips),
-            (TraditionalPokerScore.TWO_PAIR,        cards.two_pair),
-            (TraditionalPokerScore.PAIR,            cards.pair),
-            (TraditionalPokerScore.NO_PAIR,         cards.no_pair),
-        ]
-
-        for score_category, score_function in score_functions:
-            score = score_function()
-            if score:
-                return TraditionalPokerScore(score_category, score)
-
-        raise RuntimeError("Unable to detect the score")
-
 
 class HoldemPokerScoreDetector(ScoreDetector):
     def get_score(self, cards):
