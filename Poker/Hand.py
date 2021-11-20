@@ -18,6 +18,7 @@ Tensor = FloatTensor
 
 
 class ActionEncoding():
+
     def __init__(self, playerIndex: int, round: int, nRaises: int,
                 action: int):
         self.playerIndex = playerIndex
@@ -28,9 +29,9 @@ class ActionEncoding():
 
 class LHEHand:
 
-    def playRound(self, round):
+    def playRound(self, round, nRaises):
         self.round = round
-        self.nRaises = 0
+        self.nRaises = nRaises
         self.playerTurn = self.smallBlindIndex #2P
 
         while not self._roundOver():
@@ -66,14 +67,14 @@ class LHEHand:
     def _roundOver(self):
         if len(self.playersInHand) == 1:
             return True
-        if self.nRaises == 0 and len(self.bettingHistory) >= 2 and \
-            self.bettingHistory[-1].round == self.round and \
-            self.bettingHistory[-2].round == self.round and \
-            self.bettingHistory[-1].action == 1 and \
-            self.bettingHistory[-2].action == 1:
-            return True
-        if self.nRaises >= 1 and self.bettingHistory[-1].action == 1:
-            return True
+        if len(self.bettingHistory) >= 2 and self.bettingHistory[-1].action == 1:
+            if self.nRaises == 0 and \
+                self.bettingHistory[-1].round == self.round and \
+                self.bettingHistory[-2].round == self.round and \
+                self.bettingHistory[-2].action == 1:
+                return True
+            if self.nRaises >= 1:
+                return True
         return False
 
 
@@ -106,9 +107,7 @@ class LHEHand:
         self.flop = np.zeros(52)
         self.turn = np.zeros(52)
         self.river = np.zeros(52)
-        self.nRaises = 0
-        self.round = 0
-        self.playerTurn = self.smallBlindIndex
+        self.playerTurn = self.smallBlindIndex #2P
         self.deck = Deck()
 
         # Make agents do pre episode tasks
@@ -125,26 +124,26 @@ class LHEHand:
             for card in playerCards:
                 playerHand[card.rank-2+card.suit*13] = 1.0
                 self.playerHands.append(playerHand)
-        self.playRound(0)
+        self.playRound(round=0, nRaises=1)
 
         # Flop
         flopCards = self.deck.pop_cards(3)
         self._communityCards += flopCards
         for card in flopCards:
             self.flop[card.rank-2+card.suit*13] = 1
-        self.playRound(1)
+        self.playRound(round=1, nRaises=0)
 
         # Turn
         turnCard = self.deck.pop_cards(1)[0]
         self._communityCards += [turnCard]
         self.turn[turnCard.rank-2+turnCard.suit*13] = 1
-        self.playRound(2)
+        self.playRound(round=2, nRaises=0)
 
         # River
         riverCard = self.deck.pop_cards(1)[0]
         self._communityCards += [riverCard]
         self.river[riverCard.rank-2+riverCard.suit*13] = 1
-        self.playRound(3)
+        self.playRound(round=3, nRaises=0)
 
         if len(self.playersInHand) == 1: #2P
             amount = self.playerOut[0].pot #2P

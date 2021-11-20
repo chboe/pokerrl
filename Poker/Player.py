@@ -6,6 +6,7 @@ class Player():
         return amount
 
 
-    def __init__(self, agent):
+    def __init__(self, agent, id):
         self.pot = 0
+        self.id = id
         self.agent = agent
