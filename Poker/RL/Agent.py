@@ -87,7 +87,7 @@ class Agent:
 
         current_q_values = self.qNetwork(batch_state).gather(1, batch_action)
         max_next_q_values = self.targetPolicyNetwork(batch_next_state).detach().max(1)[0]
-        max_next_q_values *= torch.tensor(terminalStates)
+        max_next_q_values *= Tensor(terminalStates)
         expected_q_values = batch_reward + max_next_q_values
 
         loss = F.mse_loss(current_q_values, expected_q_values.view(-1, 1))
