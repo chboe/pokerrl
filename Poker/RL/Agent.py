@@ -82,9 +82,14 @@ class Agent:
         batch_reward = torch.cat(batch_reward)
         batch_next_state = torch.cat(batch_next_state)
 
+        # Make vector of 0 and 1s based on terminal states
+        terminalStates = list(map(lambda x: int(x.sum().item() != 0), batch_next_state))
+
         current_q_values = self.qNetwork(batch_state).gather(1, batch_action)
         max_next_q_values = self.targetPolicyNetwork(batch_next_state).detach().max(1)[0]
+        max_next_q_values *= torch.tensor(terminalStates)
         expected_q_values = batch_reward + max_next_q_values
+
         loss = F.mse_loss(current_q_values, expected_q_values.view(-1, 1))
 
         self.qNetworkOptimizer.zero_grad()

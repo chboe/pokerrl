@@ -112,6 +112,7 @@ class LHEHand:
 
         # Make agents do pre episode tasks
         for player in self.playersInHand:
+            player.pot = 0
             player.agent.preEpisodeSetup()
 
         # PreFlop
