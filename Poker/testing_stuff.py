@@ -6,23 +6,48 @@ from RL.Agent import Agent
 from Player import Player
 from Card import Card
 from torch import tensor
+import torch
+import torch.nn.functional as F
+use_cuda = torch.cuda.is_available()
+FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+
+output = tensor([[-2.0, -3, -4]])
+output = F.softmax(output)
 
 
-batch_reward = tensor(np.ones((256)))
-batch_next_state = tensor(np.zeros((256,288))) # All batch entries are terminals (full list of zeros)
+batch_action = FloatTensor([[1],[0],[0],[2]])
 
-batch_next_state[0,:] = tensor([1]*288) # Make first batch entry non-terminal
-batch_next_state[1,:] = tensor([1]*288) # Make second batch entry non-terminal
-
-print(batch_next_state[0,:].sum().item())
-print(batch_next_state[1,:].sum().item())
-print(batch_next_state)
-max_next_q_values = tensor([3.77]*256)
-print(max_next_q_values.size())
-terminals = list(map(lambda x: int(x.sum().item() != 0), batch_next_state))
+batch_action_new = tensor(np.zeros((4,3)))
+print(batch_action.size())
+print(batch_action_new.size())
 
 
-print(max_next_q_values * tensor(terminals))
+
+for i in range(len(batch_action)):
+    print("I:",i)
+    print(int(batch_action[i].item()))
+
+    batch_action_new[i][int(batch_action[i].item())] = 1
+
+print(batch_action_new)
+print(output)
+
+#
+# batch_reward = tensor(np.ones((256)))
+# batch_next_state = tensor(np.zeros((256,288))) # All batch entries are terminals (full list of zeros)
+#
+# batch_next_state[0,:] = tensor([1]*288) # Make first batch entry non-terminal
+# batch_next_state[1,:] = tensor([1]*288) # Make second batch entry non-terminal
+#
+# print(batch_next_state[0,:].sum().item())
+# print(batch_next_state[1,:].sum().item())
+# print(batch_next_state)
+# max_next_q_values = tensor([3.77]*256)
+# print(max_next_q_values.size())
+# terminals = list(map(lambda x: int(x.sum().item() != 0), batch_next_state))
+#
+#
+# print(max_next_q_values * tensor(terminals))
 
 
 # array = [[0,0,0],

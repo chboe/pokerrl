@@ -1,10 +1,13 @@
 import math
 import random
+import torch.nn as nn
 import torch.nn.functional as F
 import torch
 import torch.optim as optim
 from torch.autograd import Variable
 from RL.Types import ReplayMemory, Network
+import numpy as np
+
 
 # if gpu is to be used
 use_cuda = torch.cuda.is_available()
@@ -48,13 +51,24 @@ class Agent:
 
 
     def select_action(self, state):
-        if self.currentPolicy == self.qNetwork and random.uniform(0, 1) > self.EPS:
-            pred = self.currentPolicy(Variable(state).type(FloatTensor))
-            return pred.data.max(1)[1].view(1, 1)
+        if self.currentPolicy == self.qNetwork:
+            if random.uniform(0, 1) > self.EPS:
+                pred = self.currentPolicy(Variable(state).type(FloatTensor))
+                return pred.data.max(1)[1].view(1, 1)
+            else:
+                return LongTensor([[random.randrange(3)]])
         else:
-            return LongTensor([[random.randrange(3)]])
+            pred = self.currentPolicy(Variable(state).type(FloatTensor))
+            pred = F.softmax(pred, dim=1).data[0]
+            prob = random.uniform(0,1)
+
+            for action in range(len(pred)):
+                prob -= pred[action]
+                if prob < 0:
+                    return LongTensor([[action]])
 
     def learnAveragePolicyNetwork(self):
+        print(len(self.msl))
         if len(self.msl) < self.BATCH_SIZE:
             return
 
@@ -64,7 +78,8 @@ class Agent:
         batch_state = Variable(torch.cat(batch_state))
         batch_action = Variable(torch.cat(batch_action))
 
-        loss = -math.log(self.qNetwork(batch_state).gather(1, batch_action))
+        batch_pred = self.averagePolicyNetwork(batch_state)
+        loss = nn.CrossEntropyLoss()(batch_pred, batch_action.data.flatten())
 
         self.averagePolicyNetworkOptimizer.zero_grad()
         loss.backward()
