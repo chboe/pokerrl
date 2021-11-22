@@ -24,9 +24,6 @@ print(batch_action_new.size())
 
 
 for i in range(len(batch_action)):
-    print("I:",i)
-    print(int(batch_action[i].item()))
-
     batch_action_new[i][int(batch_action[i].item())] = 1
 
 print(batch_action_new)
