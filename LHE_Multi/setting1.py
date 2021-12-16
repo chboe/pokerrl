@@ -12,7 +12,7 @@ SL_LR = 0.01
 BATCH_SIZE = 256
 TARGET_POLICY_UPDATE_INTERVAL = 1000
 ANTICIPATORY_PARAM = 0.9
-EPS = 0.3
+EPS = 0.08
 EPISODES = 1000
 
 agent0 = Random_Agent()
@@ -50,9 +50,10 @@ while(True):
     LHE = LHEHand(0.5, players_in[:])
     LHE.play_hand()
     episode_counter += 1
-    if episode_counter % 100 == 0:
+    if episode_counter % 1 == 0:
         print(f'Episode done: {episode_counter}')
         print()
         for p in players_in:
             print(f'Player winnings id={p.id}: {p.total_winnings}.')
         print()
+    break

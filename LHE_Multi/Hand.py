@@ -111,7 +111,7 @@ class LHEHand:
 
 
     def get_relative_player_state(self, player: Player):
-        bh = np.vstack((self.betting_state[self.turn_index:], self.betting_state[:self.turn_index]))
+        bh = np.vstack((self.betting_state[player.table_index:], self.betting_state[:player.table_index]))
         own_cards = player.hand
         comm_cards = np.array((self.flop, self.turn, self.river))
 
@@ -131,7 +131,7 @@ class LHEHand:
     def play_pre_flop(self):
         self.players_in[(self.turn_index - 2) % len(self.players_in)].bet(self.sb_value) # sb bet
         self.players_in[(self.turn_index - 1) % len(self.players_in)].bet(self.bb_value) # bb bet
-        self.betting_state[(self.turn_index - 2) % len(self.players_in)][0][0][1] = 1 # Note that sb has "raised"
+        self.betting_state[(self.turn_index - 2) % len(self.players_in)][0][0][0] = 1 # Note that sb has "called"
         self.betting_state[(self.turn_index - 1) % len(self.players_in)][0][0][1] = 1 # Note that bb has "raised"
         self.play_round(round=0)
 
@@ -204,3 +204,5 @@ class LHEHand:
         community_cards = self.decode_community_cards()
         player_scores = self.get_player_scores(community_cards)
         self.distribute_winnings(player_scores)
+        for a in self.betting_history:
+            print(a)

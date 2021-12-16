@@ -121,6 +121,11 @@ class NFSP_Agent(Agent):
             self.currentPolicy = self.averagePolicyNetwork
 
     def show_state(self, next_state, next_reward):
+        for i in range(9):
+            print(next_state[i*4*5*3: (i+1)*4*5*3])
+        print(next_reward)
+        print()
+
         # Decide whether to learn
         if self.state == None: 
             self.state = next_state

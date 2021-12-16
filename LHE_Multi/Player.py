@@ -13,6 +13,8 @@ class Player():
         self.hand = [0] * 52
         self.pot = 0
         self.table_index = table_index
+        if(self.id == 1):
+            print(self.table_index)
         self.agent.pre_episode_setup()
 
     def get_action(self, state):
@@ -21,3 +23,7 @@ class Player():
     def get_result(self, result: int):
         self.agent.get_result(result)
         self.total_winnings += result
+        if(self.id == 1):
+            print(self.hand)
+
+        
