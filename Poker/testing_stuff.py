@@ -1,33 +1,40 @@
-import numpy as np
-from Deck import Deck
-from Hand import LHEHand
-from Score_Detector import HoldemPokerScoreDetector
-from RL.Agent import Agent
-from Player import Player
-from Card import Card
-from torch import tensor
-import torch
-import torch.nn.functional as F
-use_cuda = torch.cuda.is_available()
-FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+players = ['a','b','c']
 
-output = tensor([[-2.0, -3, -4]])
-output = F.softmax(output)
+for p, i in enumerate(players):
+    print(p)
+    print(i)
 
 
-batch_action = FloatTensor([[1],[0],[0],[2]])
+# import numpy as np
+# from Deck import Deck
+# from Hand import LHEHand
+# from Score_Detector import HoldemPokerScoreDetector
+# from RL.Agent import Agent
+# from Player import Player
+# from Card import Card
+# from torch import tensor
+# import torch
+# import torch.nn.functional as F
+# use_cuda = torch.cuda.is_available()
+# FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-batch_action_new = tensor(np.zeros((4,3)))
-print(batch_action.size())
-print(batch_action_new.size())
+# output = tensor([[-2.0, -3, -4]])
+# output = F.softmax(output)
+
+
+# batch_action = FloatTensor([[1],[0],[0],[2]])
+
+# batch_action_new = tensor(np.zeros((4,3)))
+# print(batch_action.size())
+# print(batch_action_new.size())
 
 
 
-for i in range(len(batch_action)):
-    batch_action_new[i][int(batch_action[i].item())] = 1
+# for i in range(len(batch_action)):
+#     batch_action_new[i][int(batch_action[i].item())] = 1
 
-print(batch_action_new)
-print(output)
+# print(batch_action_new)
+# print(output)
 
 #
 # batch_reward = tensor(np.ones((256)))
