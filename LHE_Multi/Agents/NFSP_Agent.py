@@ -1,4 +1,3 @@
-import math
 import random
 from Agent import Agent
 import torch.nn as nn
@@ -6,7 +5,6 @@ import torch.nn.functional as F
 import torch
 import torch.optim as optim
 from torch.autograd import Variable
-from RL.Types import ReplayMemory, Network
 import numpy as np
 
 
@@ -19,9 +17,46 @@ ByteTensor = torch.cuda.ByteTensor if use_cuda else torch.ByteTensor
 Tensor = FloatTensor
 
 
+class ReplayMemory:
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.memory = []
+
+    def push(self, transition):
+        self.memory.append(transition)
+        if len(self.memory) > self.capacity:
+            del self.memory[0]
+
+    def sample(self, batch_size):
+        return random.sample(self.memory, batch_size)
+
+    def __len__(self):
+        return len(self.memory)
+
+
+class Network(nn.Module):
+    def __init__(self):
+        nn.Module.__init__(self)
+        self.l1 = nn.Linear(748, 1024)
+        self.l2 = nn.Linear(1024, 512)
+        self.l3 = nn.Linear(512, 1024)
+        self.l4 = nn.Linear(1024, 512)
+        self.l5 = nn.Linear(512, 3)
+
+    def forward(self, x):
+        x = F.relu(self.l1(x))
+        x = F.relu(self.l2(x))
+        x = F.relu(self.l3(x))
+        x = F.relu(self.l4(x))
+        x = self.l5(x)
+        return x
+
+
 class NFSP_Agent(Agent):
 
     def __init__(self,
+                 id: int,
+                 SAVE_INTERVAL: int,
                  MRL_SIZE: int,
                  MSL_SIZE: int,
                  RL_LR: float,
@@ -31,6 +66,8 @@ class NFSP_Agent(Agent):
                  ANTICIPATORY_PARAM: float,
                  EPS: float):
 
+        self.id = id
+        self.SAVE_INTERVAL = SAVE_INTERVAL
         self.MRL_SIZE = MRL_SIZE
         self.MSL_SIZE = MSL_SIZE
         self.RL_LR = RL_LR
@@ -52,22 +89,25 @@ class NFSP_Agent(Agent):
         self.averagePolicyNetworkOptimizer = optim.SGD(self.averagePolicyNetwork.parameters(), self.SL_LR)
 
 
-    def select_action(self, state):
+    def select_action(self, state, reward):
+        self.update_state(state, reward)
+
         if self.currentPolicy == self.qNetwork:
             if random.uniform(0, 1) > self.EPS:
-                pred = self.currentPolicy(Variable(state).type(FloatTensor))
-                return pred.data.max(1)[1].view(1, 1)
+                pred = self.currentPolicy(Variable(self.state[None, :]).type(FloatTensor))
+                self.action = pred.data.max(1)[1].view(1, 1)
             else:
-                return LongTensor([[random.randrange(3)]])
+                self.action = LongTensor([[random.randrange(3)]])
         else:
-            pred = self.currentPolicy(Variable(state).type(FloatTensor))
+            pred = self.currentPolicy(Variable(self.state[None, :]).type(FloatTensor))
             pred = F.softmax(pred, dim=1).data[0]
             prob = random.uniform(0,1)
 
             for action in range(len(pred)):
                 prob -= pred[action]
                 if prob < 0:
-                    return LongTensor([[action]])
+                    self.action = LongTensor([[action]])
+        return self.action[0][0].item()
 
     def learnAveragePolicyNetwork(self):
         if len(self.msl) < self.BATCH_SIZE:
@@ -80,7 +120,7 @@ class NFSP_Agent(Agent):
         batch_action = Variable(torch.cat(batch_action))
 
         batch_pred = self.averagePolicyNetwork(batch_state)
-        loss = nn.CrossEntropyLoss()(batch_pred, batch_action.data.flatten())
+        loss = nn.CrossEntropyLoss()(batch_pred, batch_action.flatten())
 
         self.averagePolicyNetworkOptimizer.zero_grad()
         loss.backward()
@@ -102,6 +142,8 @@ class NFSP_Agent(Agent):
         terminalStates = list(map(lambda x: int(x.sum().item() != 0), batch_next_state))
 
         current_q_values = self.qNetwork(batch_state).gather(1, batch_action)
+        if current_q_values.isnan().any(): # DEBUG
+            print(current_q_values) # DEBUG
         max_next_q_values = self.targetPolicyNetwork(batch_next_state).detach().max(1)[0]
         max_next_q_values *= Tensor(terminalStates)
         expected_q_values = batch_reward + max_next_q_values
@@ -112,20 +154,7 @@ class NFSP_Agent(Agent):
         loss.backward()
         self.qNetworkOptimizer.step()
 
-
-    def pre_episode_setup(self):
-        self.state = None
-        if random.uniform(0, 1) < self.ANTICIPATORY_PARAM:
-            self.currentPolicy = self.qNetwork
-        else:
-            self.currentPolicy = self.averagePolicyNetwork
-
-    def show_state(self, next_state, next_reward):
-        for i in range(9):
-            print(next_state[i*4*5*3: (i+1)*4*5*3])
-        print(next_reward)
-        print()
-
+    def update_state(self, next_state, next_reward):
         # Decide whether to learn
         if self.state == None: 
             self.state = next_state
@@ -138,19 +167,25 @@ class NFSP_Agent(Agent):
         
         self.learnAveragePolicyNetwork()
         self.learnQNetwork()
-        
-        self.update_count += 1
-        if self.update_count == self.TARGET_POLICY_UPDATE_INTERVAL:
-            self.targetPolicyNetwork.load_state_dict(self.qNetwork.state_dict())
-            self.update_count = 0
-
         self.state = next_state
 
+        self.update_count += 1
+        if self.update_count % self.TARGET_POLICY_UPDATE_INTERVAL == 0:
+            self.targetPolicyNetwork.load_state_dict(self.qNetwork.state_dict())
+        
+        if self.update_count % self.SAVE_INTERVAL == 0:
+            torch.save(self.targetPolicyNetwork, f'id={self.id}_steps={self.update_count}')
+
+    def pre_episode_setup(self):
+        self.state = None
+        if random.uniform(0, 1) < self.ANTICIPATORY_PARAM:
+            self.currentPolicy = self.qNetwork
+        else:
+            self.currentPolicy = self.averagePolicyNetwork
+
     def get_action(self, state):
-        self.show_state(FloatTensor(state), 0)
-        self.action = self.select_action(FloatTensor(self.state)[None, :])
-        return self.action[0][0].item()
+        return self.select_action(FloatTensor(state), 0)
 
     def get_result(self, result: int):
-        self.show_state(FloatTensor(np.zeros(748)), result)
+        self.update_state(FloatTensor(np.zeros(748)), result)
 

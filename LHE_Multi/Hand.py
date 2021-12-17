@@ -1,7 +1,7 @@
 from Deck import Deck
 from typing import List
 import numpy as np
-from RL.NFSP_Agent import Agent
+from Agents.NFSP_Agent import Agent
 from Player import Player
 import torch
 from Card import Card
@@ -46,6 +46,11 @@ class LHEHand:
         self.betting_history: List[ActionEncoding] = []
         self.betting_state = np.zeros((9, 4, 5, 3)) # {num_players, num_rounds, num_bets, num_actions}
 
+        # Set to "fold" for players not in game
+        for i in range(len(players_in), 9):
+            self.betting_state[i][0][0][2] = 1.0
+
+
         self.flop = np.zeros(52)
         self.turn = np.zeros(52)
         self.river = np.zeros(52)
@@ -55,6 +60,8 @@ class LHEHand:
         # Make agents do pre episode tasks
         for table_index, player in enumerate(self.players_in):
             player.prepare_new_round(table_index)
+
+        
 
 
     def play_round(self, round: int):
@@ -200,9 +207,8 @@ class LHEHand:
         self.play_river()
 
         # Game is over, find winner(s)
-
         community_cards = self.decode_community_cards()
         player_scores = self.get_player_scores(community_cards)
         self.distribute_winnings(player_scores)
-        for a in self.betting_history:
-            print(a)
+        # for a in self.betting_history:
+        #     print(a)

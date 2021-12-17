@@ -1,6 +1,7 @@
 from Player import Player
 from Hand import LHEHand
-from RL.NFSP_Agent import NFSP_Agent
+from Agents.NFSP_Agent import NFSP_Agent
+import random
 
 USE_TRAINED_MODELS = False
 
@@ -46,12 +47,14 @@ players_in = [player0, player1, player2, player3, player4, player5, player6, pla
 episode_counter = 0
 
 while(True):
-    LHE = LHEHand(0.5, players_in[:])
+    num_players = random.randint(2, 9)
+    print(random.sample(players_in, num_players))
+    LHE = LHEHand(0.5, random.sample(players_in, num_players))
     LHE.play_hand()
     episode_counter += 1
     if episode_counter % 100 == 0:
         print(f'Episode done: {episode_counter}')
         print()
         for p in players_in:
-            print(f'Player winnings id={p.id}: {p.total_winnings}.')
+            print(f'Player id={p.id}, total winnings={p.total_winnings}, average last 100 = {sum(p.last100)/len(p.last100)}')
         print()
