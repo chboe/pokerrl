@@ -6,7 +6,6 @@ import torch
 import torch.optim as optim
 import re
 from operator import itemgetter
-import time
 
 
 # if gpu is to be used (LARGE NETWORKS ONLY)
@@ -213,12 +212,13 @@ class NFSP_Agent(Agent):
             pred = self.currentPolicy(state)
             pred = F.softmax(pred, dim=1).data[0]
             prob = random.uniform(0,1)
-
+            
             for action in range(len(pred)):
                 prob -= pred[action]
                 if prob < 0:
                     self.action = LongTensor([[action]])
-        return self.action[0][0].item()
+                    return self.action[0][0].item()
+        
 
     def pre_episode_setup(self):
         self.state = None
@@ -227,7 +227,7 @@ class NFSP_Agent(Agent):
             self.currentPolicy = self.qNetwork
         else:
             self.currentPolicy = self.averagePolicyNetwork
-        self.currentPolicy = self.qNetwork # TODO remove this for training
+        self.currentPolicy = self.averagePolicyNetwork # TODO remove this for training
 
     def get_action(self, state):
         return self.select_action(Tensor(state)[None, :])

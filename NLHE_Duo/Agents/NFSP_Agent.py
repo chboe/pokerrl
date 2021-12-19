@@ -221,7 +221,7 @@ class NFSP_Agent(Agent):
                 prob -= pred[action]
                 if prob < 0:
                     self.action = LongTensor([[action]])
-        return self.action[0][0].item()
+                    return self.action[0][0].item()
 
     def pre_episode_setup(self):
         self.state = None

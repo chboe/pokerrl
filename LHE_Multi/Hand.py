@@ -27,7 +27,10 @@ class ActionEncoding():
         self.action = action
 
     def __str__(self):
-        return f'index={self.table_index}, action={self.action}, round={self.round}'
+        return f'round={self.round}, seat={self.table_index}, action={ActionEncoding._action_to_str(self.action)}'
+
+    def _action_to_str(action: int):
+        return ['raise', 'call', 'fold'][action]
 
 
 class LHEHand:
@@ -62,8 +65,6 @@ class LHEHand:
             player.prepare_new_round(table_index)
 
         
-
-
     def play_round(self, round: int):
         self.round = round
         self.num_raises = 0
@@ -90,12 +91,12 @@ class LHEHand:
         if action == 2: # Raise
             raise_amount = 1 + 1 * (self.round >= 2)
             player.pot = self.players_in[(self.turn_index - 1) % len(self.players_in)].pot + raise_amount
-            self.betting_state[player.table_index][self.round][self.num_raises][1] = 1
+            self.betting_state[player.table_index][self.round][self.num_raises][0] = 1
             self.num_raises += 1
 
         if action == 1: # Call
             player.pot = self.players_in[(self.turn_index - 1) % len(self.players_in)].pot
-            self.betting_state[player.table_index][self.round][self.num_raises][0] = 1
+            self.betting_state[player.table_index][self.round][self.num_raises][1] = 1
 
         if action == 0: # Fold
             self.betting_state[player.table_index][self.round][self.num_raises][2] = 1
@@ -138,8 +139,8 @@ class LHEHand:
     def play_pre_flop(self):
         self.players_in[(self.turn_index - 2) % len(self.players_in)].bet(self.sb_value) # sb bet
         self.players_in[(self.turn_index - 1) % len(self.players_in)].bet(self.bb_value) # bb bet
-        self.betting_state[(self.turn_index - 2) % len(self.players_in)][0][0][0] = 1 # Note that sb has "called"
-        self.betting_state[(self.turn_index - 1) % len(self.players_in)][0][0][1] = 1 # Note that bb has "raised"
+        self.betting_state[(self.turn_index - 2) % len(self.players_in)][0][0][1] = 1 # Note that sb has "called"
+        self.betting_state[(self.turn_index - 1) % len(self.players_in)][0][0][0] = 1 # Note that bb has "raised"
         self.play_round(round=0)
 
     def play_flop(self):
@@ -210,5 +211,3 @@ class LHEHand:
         community_cards = self.decode_community_cards()
         player_scores = self.get_player_scores(community_cards)
         self.distribute_winnings(player_scores)
-        # for a in self.betting_history:
-        #     print(a)
