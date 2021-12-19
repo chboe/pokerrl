@@ -184,24 +184,21 @@ class NFSP_Agent(Agent):
             self.state = next_state
             return
 
-        self.mrl.push((self.state, self.action, next_state, Tensor([next_reward]), Tensor([not_terminal])))
-
-        if self.currentPolicy == self.qNetwork:
-            self.msl.push((self.state, self.action))
-        
         if self.LEARN:
+            if self.currentPolicy == self.qNetwork:
+                self.msl.push((self.state, self.action))
+            self.mrl.push((self.state, self.action, next_state, Tensor([next_reward]), Tensor([not_terminal])))
             self.learnAveragePolicyNetwork()
             self.learnQNetwork()
 
-        self.state = next_state
+            self.update_count += 1
+            if self.update_count % self.TARGET_POLICY_UPDATE_INTERVAL == 0:
+                self.targetPolicyNetwork.load_state_dict(self.qNetwork.state_dict())
+            if self.update_count % self.SAVE_INTERVAL == 0:
+                torch.save(self.targetPolicyNetwork, f'Agents/NFSP_Model/id={self.id}_steps={self.update_count}_target.model')
+                torch.save(self.averagePolicyNetwork, f'Agents/NFSP_Model/id={self.id}_steps={self.update_count}_avg.model')
 
-        self.update_count += 1
-        if self.update_count % self.TARGET_POLICY_UPDATE_INTERVAL == 0:
-            self.targetPolicyNetwork.load_state_dict(self.qNetwork.state_dict())
-        
-        if self.LEARN and self.update_count % self.SAVE_INTERVAL == 0:
-            torch.save(self.targetPolicyNetwork, f'Agents/NFSP_Model/id={self.id}_steps={self.update_count}_target.model')
-            torch.save(self.averagePolicyNetwork, f'Agents/NFSP_Model/id={self.id}_steps={self.update_count}_avg.model')
+        self.state = next_state
 
     def select_action(self, state):
         self.update_state(state, 0, 1)
@@ -230,7 +227,7 @@ class NFSP_Agent(Agent):
             self.currentPolicy = self.qNetwork
         else:
             self.currentPolicy = self.averagePolicyNetwork
-        self.currentPolicy = self.averagePolicyNetwork # TODO remove this for training
+        self.currentPolicy = self.qNetwork # TODO remove this for training
 
     def get_action(self, state):
         return self.select_action(Tensor(state)[None, :])

@@ -17,7 +17,7 @@ TARGET_POLICY_UPDATE_INTERVAL = 1000
 ANTICIPATORY_PARAM = 0.9
 EPS = 0.08
 EPS_DECAY=1_000_000
-MODEL_TO_LOAD = "Agents/NFSP_Model/id=1901_steps=1000000"
+MODEL_TO_LOAD = "Agents/NFSP_Model/id=1901_steps=1250000"
 
 agent0 = Raise_Agent()
 player0 = Player(id=0, agent=agent0)
