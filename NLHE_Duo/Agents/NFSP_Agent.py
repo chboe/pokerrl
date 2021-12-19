@@ -230,7 +230,7 @@ class NFSP_Agent(Agent):
             self.currentPolicy = self.qNetwork
         else:
             self.currentPolicy = self.averagePolicyNetwork
-        self.currentPolicy = self.averagePolicyNetwork # TODO remove this for training
+        self.currentPolicy = self.averagePolicyNetwork
 
     def get_action(self, state):
         return self.select_action(Tensor(state)[None, :])

@@ -1,16 +1,16 @@
-import torch.nn as nn
 import torch
-from Player import Player
-from Agents.NFSP_Agent import Network
-
-qnn900 = torch.load("Agents/NFSP_Model/id=900_steps=750000_target.model") 
-ann900 = torch.load("Agents/NFSP_Model/id=900_steps=750000_avg.model")
 
 
-qnn901 = torch.load("Agents/NFSP_Model/id=901_steps=2250000_target.model")
-ann901 = torch.load("Agents/NFSP_Model/id=901_steps=2250000_avg.model")
+model_strings = [
+    "Agents/NFSP_Model/id=1900_steps=500000_target.model",
+    "Agents/NFSP_Model/id=1900_steps=500000_avg.model",
+    "Agents/NFSP_Model/id=1901_steps=500000_target.model",
+    "Agents/NFSP_Model/id=1901_steps=500000_avg.model"
+]
 
-models = [qnn900]
+models = []
+for name in model_strings:
+    models.append(torch.load(name))
 
 for i, model in enumerate(models):
     print("MODEL:", i)
