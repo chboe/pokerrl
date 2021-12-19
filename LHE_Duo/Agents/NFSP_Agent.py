@@ -8,8 +8,9 @@ import re
 from operator import itemgetter
 
 
-# if gpu is to be used
-use_cuda = torch.cuda.is_available()
+# if gpu is to be used (LARGE NETWORKS ONLY)
+#use_cuda = torch.cuda.is_available() 
+use_cuda = False
 FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
 ByteTensor = torch.cuda.ByteTensor if use_cuda else torch.ByteTensor
@@ -26,12 +27,12 @@ class ExponentialReservoir():
         self.memory = []
 
     def push(self, transition):
-        self.stream_age += 1
-        if self.stream_age <= self.capacity: 
+        if self.stream_age < self.capacity: 
             self.memory.append(transition)
-        elif random.uniform(0, 1) < 0.333:
+        elif random.uniform(0, 1) < 0.3:
             eject_index = random.randint(0, self.capacity - 1)
             self.memory[eject_index] = transition
+        self.stream_age += 1
 
     def sample(self, batch_size):
         return random.sample(self.memory, batch_size)
@@ -66,11 +67,11 @@ class CircularBuffer():
 class Network(nn.Module):
     def __init__(self):
         nn.Module.__init__(self)
-        self.l1 = nn.Linear(288, 1024)
-        self.l2 = nn.Linear(1024, 512)
-        self.l3 = nn.Linear(512, 1024)
-        self.l4 = nn.Linear(1024, 512)
-        self.l5 = nn.Linear(512, 3)
+        self.l1 = nn.Linear(288, 64)
+        self.l2 = nn.Linear(64, 128)
+        self.l3 = nn.Linear(128, 128)
+        self.l4 = nn.Linear(128, 64)
+        self.l5 = nn.Linear(64, 3)
 
     def forward(self, x):
         x = F.relu(self.l1(x))

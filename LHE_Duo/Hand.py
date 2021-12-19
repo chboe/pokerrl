@@ -195,6 +195,9 @@ class LHEHand:
         community_cards = self.decode_community_cards()
         player_scores = self.get_player_scores(community_cards)
 
+        # for card in community_cards:
+        #     print(Card.RANKS[card.rank],Card.SUITS[card.suit])
+
         # print("--------------------")
         # for a in self.betting_history:
         #     print(a)

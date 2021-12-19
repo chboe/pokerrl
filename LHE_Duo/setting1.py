@@ -9,8 +9,8 @@ import time
 USE_TRAINED_MODELS = False
 
 SAVE_INTERVAL = 250_000
-MRL_SIZE = 600_000
-MSL_SIZE = 3_000_000
+MRL_SIZE = 500_000
+MSL_SIZE = 2_500_000
 RL_LR = 0.01
 SL_LR = 0.001
 BATCH_SIZE = 256
@@ -28,9 +28,9 @@ agent1 = NFSP_Agent(1901, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH
 player1 = Player(id=1901, agent=agent1)
 
 players_in = [player0, player1]
+previous_steps = [0, 0]
 
 # Play
-steps = 0
 before = time.time()
 episode_counter = 0
 while(True):
@@ -40,12 +40,16 @@ while(True):
 
     episode_counter += 1
     if episode_counter % 100 == 0:
+        now = time.time()
+        time_passed = now - before
         print(f'\nEpisode done: {episode_counter}')
-        print(agent1.update_count - steps)
-        print(time.time() - before)
-        for p in players_in:
-            print(f'Player id={p.id}, total winnings={p.total_winnings}, average last 100 = {sum(p.last100)/len(p.last100)}')
-        before = time.time()
-        steps = agent1.update_count
+        print("Time taken:", time_passed)
+        for i, p in enumerate(players_in):
+            print(f'\nPlayer id={p.id}, total winnings={p.total_winnings}, average last 100 = {sum(p.last100)/len(p.last100)}')
+            steps_taken = p.agent.update_count - previous_steps[i]
+            print(f'Player id={p.id} took steps {steps_taken}')
+            print(f'Average seconds per step is {time_passed / steps_taken}')
+            previous_steps[i] = p.agent.update_count
+        before = now
     
     
