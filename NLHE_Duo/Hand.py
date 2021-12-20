@@ -9,11 +9,12 @@ import random
 
 class ActionEncoding():
 
-    def __init__(self, table_index: int, round: int, num_raises: int,
-                action: int):
+    def __init__(self, table_index: int, round: int, stack_size: float,
+                action: int, raise_amount: float):
         self.table_index = table_index
         self.round = round
-        self.num_raises = num_raises
+        self.stack_size = stack_size
+        self.raise_amount = raise_amount
         self.action = action
 
     def __str__(self):
@@ -23,7 +24,7 @@ class ActionEncoding():
         return ['raise', 'call', 'fold'][action]
 
 
-class LHEHand:
+class NLHEHand:
 
     def __init__(self, sb_value: int, players_in: List[Player]):
         #Params
@@ -37,7 +38,6 @@ class LHEHand:
 
         #Initialize vars
         self.betting_history: List[ActionEncoding] = []
-        self.betting_state = np.zeros((2, 4, 5, 2)) # {num_players, num_rounds, num_bets, num_actions}
 
         self.flop = np.zeros(52)
         self.turn = np.zeros(52)
@@ -51,13 +51,10 @@ class LHEHand:
 
         
     def play_round(self, round: int):
+        self.min_bet = 1
         self.round = round
-        self.num_raises = 0
         self.turn_index = self.sb_index
         self.players_round = 2 # 2P
-
-        if round == 0: # First round is special # 2P
-            self.num_raises = 1
         
         while not self.round_over():
             player_to_act = self.players_in[self.turn_index]                      # Find player
@@ -67,27 +64,30 @@ class LHEHand:
             self.turn_index = 1 - self.turn_index                                 # rotate turns # 2P
 
 
-    def perform_action(self, action, player):
-        # Force call/fold if num_raises == 4
-        if self.num_raises == 4 and action == 0:
-            action = 1
+    def perform_action(self, action_tuple, player: Player):
+        action = action_tuple[0]
+        raise_to = action_tuple[1] # Only used for raises
+        stack_size_before = player.stack_size
 
         if action == 0: # Raise
-            raise_amount = 1 + 1 * (self.round >= 2)
-            player.pot = self.players_in[1 - self.turn_index].pot + raise_amount # 2P
-            self.betting_state[player.table_index][self.round][self.num_raises][0] = 1
-            self.num_raises += 1
+            call_amount_max = self.players_in[1 - self.turn_index].pot - player.pot # 2P
+
+            raise_to = min(player.pot, max(raise_to, self.min_bet))
+
+            raise_amount = raise_to - call_amount
+            self.min_bet = max(self.min_bet, self.m)
+
+
+            player.pot = self.players_in[1 - self.turn_index].pot + raise_to # 2P
 
         if action == 1: # Call
-            player.pot = self.players_in[1 - self.turn_index].pot # 2P
-            self.betting_state[player.table_index][self.round][self.num_raises][1] = 1
+            call_amount_max = self.players_in[1 - self.turn_index].pot - player.pot
+            call_amount = player.bet(call_amount_max)
 
-        if action == 2: # Fold
-            #self.betting_state[player.table_index][self.round][self.num_raises][2] = 1
+        if action == 2: # Fold 2P
             self.players_out.append(self.players_in.pop(self.turn_index))
-            #self.turn_index -= 1
 
-        actionEncoding = ActionEncoding(player.table_index, self.round, self.num_raises, action)
+        actionEncoding = ActionEncoding(player.table_index, self.round, stack_size_before, action)
         self.betting_history.append(actionEncoding)
 
     def check_all_calls(self, current_round_actions):
@@ -103,7 +103,6 @@ class LHEHand:
 
 
     def get_relative_player_state(self, player: Player):
-        bh = np.vstack((self.betting_state[player.table_index:], self.betting_state[:player.table_index]))
         own_cards = player.hand
         comm_cards = np.array((self.flop, self.turn, self.river))
 
@@ -121,10 +120,16 @@ class LHEHand:
                 player.hand[card.rank - 2 + card.suit*13] = 1.0
 
     def play_pre_flop(self): #2P next 4 lines
+        # Make smallblind do call
+        stack_size_before = self.players_in[0]
         self.players_in[0].bet(self.sb_value) # sb bet
+        self.betting_history.append(ActionEncoding(0, 0, stack_size_before, 1, 0))
+
+        # Make bigblind do raise
+        stack_size_before = self.players_in[0]
         self.players_in[1].bet(self.bb_value) # bb bet
-        self.betting_state[0][0][0][1] = 1 # Note that sb has "called"
-        self.betting_state[1][0][0][0] = 1 # Note that bb has "raised"
+        self.betting_history.append(ActionEncoding(0, 0, stack_size_before, 0, 1))
+        
         self.play_round(round=0)
 
     def play_flop(self):
@@ -194,14 +199,6 @@ class LHEHand:
         # Game is over, find winner(s)
         community_cards = self.decode_community_cards()
         player_scores = self.get_player_scores(community_cards)
-
-        # for card in community_cards:
-        #     print(Card.RANKS[card.rank],Card.SUITS[card.suit])
-
-        # print("--------------------")
-        # for a in self.betting_history:
-        #     print(a)
-
         self.distribute_winnings(player_scores)
 
         

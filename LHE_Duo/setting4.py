@@ -7,17 +7,17 @@ from Hand import LHEHand
 from Agents.NFSP_Agent import NFSP_Agent
 from Agents.Raise_Agent import Raise_Agent
 
-SAVE_INTERVAL = 100000
-MRL_SIZE = 30_000_000
-MSL_SIZE = 600_000
+SAVE_INTERVAL = 100000 # Doesnt matter during eval
+MRL_SIZE = 100_000 # Doesnt matter during eval
+MSL_SIZE = 100_000 # Doesnt matter during eval
 RL_LR = 0.01
 SL_LR = 0.01
 BATCH_SIZE = 256
 TARGET_POLICY_UPDATE_INTERVAL = 1000
-ANTICIPATORY_PARAM = 0.9
+ANTICIPATORY_PARAM = 1 # 0 is avgPolicyNetwork, 1 is QNetwork
 EPS = 0.08
-EPS_DECAY=1_000_000
-MODEL_TO_LOAD = "Agents/NFSP_Model/id=1900_steps=1750000"
+EPS_DECAY = 1_000_000
+MODEL_TO_LOAD = "Agents/NFSP_Model/id=2000_steps=4900000"
 
 agent0 = Raise_Agent()
 player0 = Player(id=0, agent=agent0)

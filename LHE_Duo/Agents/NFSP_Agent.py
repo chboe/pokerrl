@@ -201,18 +201,17 @@ class NFSP_Agent(Agent):
 
     def select_action(self, state):
         self.update_state(state, 0, 1)
-
         if self.currentPolicy == self.qNetwork:
             if random.uniform(0, 1) > (self.EPS - self.EPS * min(1, self.update_count/self.EPS_DECAY)):
                 pred = self.currentPolicy(state)
                 self.action = pred.data.max(1)[1].view(1, 1)
             else:
                 self.action = LongTensor([[random.randrange(3)]])
+            return self.action[0][0].item()
         else:
             pred = self.currentPolicy(state)
             pred = F.softmax(pred, dim=1).data[0]
             prob = random.uniform(0,1)
-            
             for action in range(len(pred)):
                 prob -= pred[action]
                 if prob < 0:
@@ -222,12 +221,10 @@ class NFSP_Agent(Agent):
 
     def pre_episode_setup(self):
         self.state = None
-        # During evaluation (self.LEARN=False), the avg policy network is chosen always
         if random.uniform(0, 1) < self.ANTICIPATORY_PARAM:
             self.currentPolicy = self.qNetwork
         else:
             self.currentPolicy = self.averagePolicyNetwork
-        self.currentPolicy = self.averagePolicyNetwork # TODO remove this for training
 
     def get_action(self, state):
         return self.select_action(Tensor(state)[None, :])

@@ -14,28 +14,18 @@ RL_LR = 0.01
 SL_LR = 0.01
 BATCH_SIZE = 256
 TARGET_POLICY_UPDATE_INTERVAL = 1000
-ANTICIPATORY_PARAM = 0.9
+ANTICIPATORY_PARAM = 0 # 0 is avgPolicyNetwork, 1 is QNetwork
 EPS = 0.08
 EPS_DECAY = 1
 
-MODEL_TO_LOAD0 = "Agents/NFSP_Model/id=1900_steps=750000"
-MODEL_TO_LOAD1 = "Agents/NFSP_Model/id=1900_steps=1250000"
+MODEL_TO_LOAD0 = "Agents/NFSP_Model/id=2000_steps=2000000"
+MODEL_TO_LOAD1 = "Agents/NFSP_Model/id=2000_steps=4800000"
 
 agent0 = NFSP_Agent(0, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD0, LEARN=False)
 player0 = Player(id=0, agent=agent0)
 
 agent1 = NFSP_Agent(1, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD1, LEARN=False)
 player1 = Player(id=1, agent=agent1)
-
-
-## Print networks
-# print("GOOD AGENT:")
-# for param in agent0.averagePolicyNetwork.parameters():
-#     print(param)
-
-# print("BAD AGENT:")
-# for param in agent1.averagePolicyNetwork.parameters():
-#     print(param)
 
 # Setup
 players_in = [player0, player1]

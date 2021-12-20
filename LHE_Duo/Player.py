@@ -14,7 +14,6 @@ class Player():
 
     def bet(self, amount):
         self.pot += amount
-        return amount
     
     def prepare_new_round(self, table_index: int):
         self.hand = [0] * 52
