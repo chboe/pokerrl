@@ -6,6 +6,7 @@ from Player import Player
 from Card import Card
 from Score_Detector import HoldemPokerScoreDetector
 import random
+from collections import defaultdict
 
 
 class ActionEncoding():
@@ -44,7 +45,7 @@ class NLHEHand:
         self.bb_value = sb_value * 2
         self.sb_value = sb_value
         self.sb_index = 0
-        self.num_all_in = 0
+        self.num_all_in = [0 for i in range(len(players_in))]
 
         self.players_in = players_in
         self.players_out = []
@@ -88,7 +89,7 @@ class NLHEHand:
 
         # If player tries to raise, but is short stacked
         short_stacked_raise = False
-        if current_stack_size == 0 or (self.num_all_in >= len(self.players_in) - 1 and action != 2):
+        if current_stack_size == 0 or (sum(self.num_all_in) >= len(self.players_in) - 1 and action != 2):
             action = 1
         elif action == 2:
             if current_stack_size <= call_amount:
@@ -117,7 +118,7 @@ class NLHEHand:
             action_value = 0
 
         if player.current_stack_pct == 0:
-            self.num_all_in += 1
+            self.num_all_in[player.table_index] = 1
 
         actionEncoding = ActionEncoding(self.round, action, action_value, player.start_stack_size, current_stack_pct)
         self.bh.append(player.table_index, actionEncoding)
@@ -203,22 +204,41 @@ class NLHEHand:
         for p in self.players_out + self.players_in:
             total_pot += p.pot
 
-        winners = 1
-        for i in range(1, len(player_scores)):
-            if player_scores[0][1] == player_scores[i][1]:
-                winners += 1
-            else:
+        all_players = self.players_in + self.players_out
+        num_all_players = len(all_players)
+
+        frozen_pots = [p.pot for p in all_players]
+        results = [0 for i in range(num_all_players)]
+
+        # Group player scores by strength
+        groups = defaultdict(list)
+        for obj in player_scores:
+            groups[obj[1].strength].append(obj)
+
+        # Sort groups by strength
+        groups = list(groups.values())
+        sorted(groups, key=(lambda e: e[0][1].strength)) 
+
+        for i in range(len(groups)):
+            take_from_pots = [0 for _ in range(num_all_players)]
+            for (p, s) in groups[i]:
+                for takee in all_players:
+                    ti = takee.table_index
+                    take_amount = min(p.pot, frozen_pots[ti] / len(groups[i]))
+                    take_from_pots[ti] += take_amount
+                    results[p.table_index] += take_amount
+                    total_pot -= take_amount
+
+            for i in range(num_all_players):
+                frozen_pots[i] -= take_from_pots[i]
+
+            # Break when total_pot has been emptied
+            if total_pot < 1e-9:
                 break
-        
-        for i in range(winners):
-            player_scores[i][0].get_result(total_pot/winners - player_scores[i][0].pot)
 
+        for p in all_players:
+            p.get_result(results[p.table_index] - p.pot)
 
-        for p in player_scores[winners:]:
-            p[0].get_result(-p[0].pot)
-
-        for p in self.players_out:
-            p.get_result(-p.pot)
 
     def play_hand(self):
         self.deal_cards()
@@ -231,5 +251,4 @@ class NLHEHand:
         community_cards = self.decode_community_cards()
         player_scores = self.get_player_scores(community_cards)
         self.distribute_winnings(player_scores)
-
         
