@@ -114,7 +114,7 @@ class LHEHand:
     def round_over(self):
         if len(self.players_in) == 1:
             return True
-        current_round_actions = list(filter(lambda x: x.round == self.round, self.betting_history))
+        current_round_actions = list(filter(lambda x: x.round == self.round, self.betting_history[-9:]))
         return len(current_round_actions) >= self.players_round and self.check_all_calls(current_round_actions)
 
 

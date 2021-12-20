@@ -7,22 +7,34 @@ from Card import Card
 from Score_Detector import HoldemPokerScoreDetector
 import random
 
+
 class ActionEncoding():
 
-    def __init__(self, table_index: int, round: int, stack_size: float,
-                action: int, raise_amount: float):
-        self.table_index = table_index
+    def __init__(self, round: int, action: int, action_value: float, 
+            start_stack_size: float, current_stack_pct: float):
         self.round = round
-        self.stack_size = stack_size
-        self.raise_amount = raise_amount
         self.action = action
+        self.action_value = action_value
+        self.start_stack_size = start_stack_size
+        self.current_stack_pct = current_stack_pct
 
     def __str__(self):
-        return f'round={self.round}, seat={self.table_index}, action={ActionEncoding._action_to_str(self.action)}'
+        return f'round={self.round}, action={ActionEncoding._action_to_str(self.action)}, action_value={self.action_value:.4f}, start_stack_size={self.start_stack_size:.2f}, current_stack_pct={self.current_stack_pct:.4f}'
 
     def _action_to_str(action: int):
         return ['raise', 'call', 'fold'][action]
 
+
+class BettingHistory():
+
+    def __init__(self, num_players: int):
+        self.history = [[] for i in range(num_players)]
+        self.num_players = num_players
+
+    def append(self, table_index: int, action: ActionEncoding):
+        for i in range(self.num_players):
+            self.history[i].append(((table_index - i) % self.num_players, action))
+        
 
 class NLHEHand:
 
@@ -32,17 +44,16 @@ class NLHEHand:
         self.bb_value = sb_value * 2
         self.sb_value = sb_value
         self.sb_index = 0
+        self.num_all_in = 0
 
         self.players_in = players_in
         self.players_out = []
 
-        #Initialize vars
-        self.betting_history: List[ActionEncoding] = []
+        self.bh = BettingHistory(len(players_in))
 
         self.flop = np.zeros(52)
         self.turn = np.zeros(52)
         self.river = np.zeros(52)
-        self.turn_index = self.sb_index #2P
         self.deck = Deck() # New deck
 
         # Make agents do pre episode tasks
@@ -51,66 +62,85 @@ class NLHEHand:
 
         
     def play_round(self, round: int):
+        self.players_round = len(self.players_in)
         self.min_bet = 1
         self.round = round
-        self.turn_index = self.sb_index
-        self.players_round = 2 # 2P
-        
+        if round == 0:
+            self.turn_index = (self.players_round + 2) % len(self.players_in)
+        else:
+            self.turn_index = self.sb_index
+
         while not self.round_over():
             player_to_act = self.players_in[self.turn_index]                      # Find player
             relative_player_state = self.get_relative_player_state(player_to_act) # Get state
             action = player_to_act.get_action(relative_player_state)              # Get action
             self.perform_action(action, player_to_act)                            # Perform action
-            self.turn_index = 1 - self.turn_index                                 # rotate turns # 2P
+            self.turn_index = (self.turn_index + 1) % len(self.players_in)        # rotate turns
+
 
 
     def perform_action(self, action_tuple, player: Player):
         action = action_tuple[0]
-        raise_to = action_tuple[1] # Only used for raises
-        stack_size_before = player.stack_size
 
+        current_stack_size = player.current_stack_size()
+        current_stack_pct = player.current_stack_pct
+        call_amount = self.max_player_pot - player.pot
+
+        # If player tries to raise, but is short stacked
+        short_stacked_raise = False
+        if current_stack_size == 0 or (self.num_all_in >= len(self.players_in) - 1 and action != 2):
+            action = 1
+        elif action == 2:
+            if current_stack_size <= call_amount:
+                action = 1
+            elif current_stack_size < call_amount + self.min_bet and current_stack_size > call_amount:
+                action = 1
+                short_stacked_raise = True
+            
         if action == 0: # Raise
-            call_amount_max = self.players_in[1 - self.turn_index].pot - player.pot # 2P
-
-            raise_to = min(player.pot, max(raise_to, self.min_bet))
-
-            raise_amount = raise_to - call_amount
-            self.min_bet = max(self.min_bet, self.m)
-
-
-            player.pot = self.players_in[1 - self.turn_index].pot + raise_to # 2P
-
-        if action == 1: # Call
-            call_amount_max = self.players_in[1 - self.turn_index].pot - player.pot
-            call_amount = player.bet(call_amount_max)
-
-        if action == 2: # Fold 2P
+            raise_to = max(action_tuple[1] * player.start_stack_size + player.pot, self.max_player_pot + self.min_bet)
+            raise_amount = player.bet(raise_to - player.pot)
+            action_value = raise_amount / player.start_stack_size
+            self.min_bet = raise_amount - call_amount
+            self.max_player_pot = player.pot
+        elif action == 1: # Call
+            if not short_stacked_raise:
+                actual_call_amount = player.bet(call_amount)
+                action_value = actual_call_amount / player.start_stack_size
+            else:
+                action_value = current_stack_pct
+                player.bet(current_stack_size)
+                self.max_player_pot = player.pot
+        else: # Fold
             self.players_out.append(self.players_in.pop(self.turn_index))
+            self.turn_index -= 1
+            action_value = 0
 
-        actionEncoding = ActionEncoding(player.table_index, self.round, stack_size_before, action)
-        self.betting_history.append(actionEncoding)
+        if player.current_stack_pct == 0:
+            self.num_all_in += 1
+
+        actionEncoding = ActionEncoding(self.round, action, action_value, player.start_stack_size, current_stack_pct)
+        self.bh.append(player.table_index, actionEncoding)
 
     def check_all_calls(self, current_round_actions):
         calls_to_find = len(self.players_in) - 1
-        calls_raises = list(filter(lambda x: x.action != 2, current_round_actions))
-        return len(list(filter(lambda x: x.action == 1, calls_raises[-calls_to_find:]))) == calls_to_find
+        calls_raises = list(filter(lambda x: x[1].action != 2, current_round_actions))
+        return len(list(filter(lambda x: x[1].action == 1, calls_raises[-calls_to_find:]))) == calls_to_find
 
     def round_over(self):
         if len(self.players_in) == 1:
             return True
-        current_round_actions = list(filter(lambda x: x.round == self.round, self.betting_history))
-        return len(current_round_actions) >= self.players_round and self.check_all_calls(current_round_actions)
+        current_round_actions = list(filter(lambda x: x[1].round == self.round, self.bh.history[0][-9:]))
+        return len(current_round_actions) >= self.players_round + 2 * (self.round == 0) and self.check_all_calls(current_round_actions)
 
 
     def get_relative_player_state(self, player: Player):
         own_cards = player.hand
         comm_cards = np.array((self.flop, self.turn, self.river))
 
-        bh = np.ravel(bh)
         own_cards = np.ravel(own_cards)
         comm_cards = np.ravel(comm_cards)
-
-        return np.concatenate((bh, own_cards, comm_cards))
+        return self.bh.history[player.table_index], np.concatenate((own_cards, comm_cards))
 
 
     def deal_cards(self):
@@ -119,16 +149,17 @@ class NLHEHand:
             for card in player_cards:
                 player.hand[card.rank - 2 + card.suit*13] = 1.0
 
-    def play_pre_flop(self): #2P next 4 lines
+    def play_pre_flop(self):
         # Make smallblind do call
-        stack_size_before = self.players_in[0]
         self.players_in[0].bet(self.sb_value) # sb bet
-        self.betting_history.append(ActionEncoding(0, 0, stack_size_before, 1, 0))
+        s = self.players_in[0].start_stack_size
+        self.bh.append(0, ActionEncoding(0, 1, 0.5/s, s, 1))
 
+        self.max_player_pot = 1
         # Make bigblind do raise
-        stack_size_before = self.players_in[0]
         self.players_in[1].bet(self.bb_value) # bb bet
-        self.betting_history.append(ActionEncoding(0, 0, stack_size_before, 0, 1))
+        s = self.players_in[1].start_stack_size
+        self.bh.append(1, ActionEncoding(0, 0, 1.0/s, s, 1))
         
         self.play_round(round=0)
 

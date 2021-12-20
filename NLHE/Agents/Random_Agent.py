@@ -10,7 +10,8 @@ class Random_Agent(Agent):
         return
 
     def get_action(self, state):
-        return random.randint(0, 2)
+        action_value = random.uniform(0, 1)
+        return random.randint(0, 1), action_value
 
     def get_result(self, result: int):
         return 
