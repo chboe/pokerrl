@@ -27,7 +27,7 @@ EPS_DECAY = 1
 
 model_id = 2100
 step_size = 2500
-limit = 235000
+limit = 237500
 header = ['steps', 'winnings']
 
 # Play against Call Agent
