@@ -19,6 +19,7 @@ for file in os.listdir('Evaluation/'):
     plt.plot(steps, winnings)
     plt.ticklabel_format(style='plain')
     plt.xlim(0)
+    plt.axhline(0, linestyle=':')
     plt.xlabel(columns[0])
     plt.ylabel(columns[1])
     plt.title(file[:-4])

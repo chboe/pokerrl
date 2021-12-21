@@ -2,10 +2,10 @@ import torch
 
 
 model_strings = [
-    "Agents/NFSP_Model/id=2000_steps=6200000_target.model",
-    "Agents/NFSP_Model/id=2000_steps=6200000_avg.model",
-    "Agents/NFSP_Model/id=2001_steps=6150000_target.model",
-    "Agents/NFSP_Model/id=2001_steps=6150000_avg.model"
+    "Agents/NFSP_Model/id=2100_steps=227500_target.model",
+    "Agents/NFSP_Model/id=2100_steps=227500_avg.model",
+    "Agents/NFSP_Model/id=2101_steps=227500_target.model",
+    "Agents/NFSP_Model/id=2101_steps=227500_avg.model"
 ]
 
 for name in model_strings:

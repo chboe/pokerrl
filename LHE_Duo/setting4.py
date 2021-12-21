@@ -15,9 +15,9 @@ SL_LR = 0.01
 BATCH_SIZE = 256
 TARGET_POLICY_UPDATE_INTERVAL = 1000
 ANTICIPATORY_PARAM = 1 # 0 is avgPolicyNetwork, 1 is QNetwork
-EPS = 0.08
-EPS_DECAY = 1_000_000
-MODEL_TO_LOAD = "Agents/NFSP_Model/id=2000_steps=7550000"
+EPS = 0.00
+EPS_DECAY = 1000
+MODEL_TO_LOAD = "Agents/NFSP_Model/id=2101_steps=235000"
 
 agent0 = Raise_Agent()
 player0 = Player(id=0, agent=agent0)

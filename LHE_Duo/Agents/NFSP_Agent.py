@@ -9,7 +9,7 @@ from operator import itemgetter
 
 
 # if gpu is to be used (LARGE NETWORKS ONLY)
-#use_cuda = torch.cuda.is_available() 
+# use_cuda = torch.cuda.is_available() 
 use_cuda = False
 FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
@@ -67,11 +67,11 @@ class CircularBuffer():
 class Network(nn.Module):
     def __init__(self):
         nn.Module.__init__(self)
-        self.l1 = nn.Linear(288, 64)
-        self.l2 = nn.Linear(64, 128)
-        self.l3 = nn.Linear(128, 128)
-        self.l4 = nn.Linear(128, 64)
-        self.l5 = nn.Linear(64, 3)
+        self.l1 = nn.Linear(288, 512)
+        self.l2 = nn.Linear(512, 256)
+        self.l3 = nn.Linear(256, 512)
+        self.l4 = nn.Linear(512, 256)
+        self.l5 = nn.Linear(256, 3)
 
     def forward(self, x):
         x = F.relu(self.l1(x))
@@ -120,10 +120,12 @@ class NFSP_Agent(Agent):
             self.qNetwork = torch.load(MODEL_TO_LOAD + "_target.model")
             self.averagePolicyNetwork = torch.load(MODEL_TO_LOAD + "_avg.model")
             self.update_count = int(re.findall(r'steps=(\d*)', MODEL_TO_LOAD)[-1])
+            self.step_count = 256 * self.update_count
         else:
             self.qNetwork = Network()
             self.averagePolicyNetwork = Network()
             self.update_count = 0
+            self.step_count = 0
 
         # Make networks use cuda
         if use_cuda:
@@ -187,22 +189,31 @@ class NFSP_Agent(Agent):
             if self.currentPolicy == self.qNetwork:
                 self.msl.push((self.state, self.action))
             self.mrl.push((self.state, self.action, next_state, Tensor([next_reward]), Tensor([not_terminal])))
-            self.learnAveragePolicyNetwork()
-            self.learnQNetwork()
 
-            self.update_count += 1
-            if self.update_count % self.TARGET_POLICY_UPDATE_INTERVAL == 0:
-                self.targetPolicyNetwork.load_state_dict(self.qNetwork.state_dict())
-            if self.update_count % self.SAVE_INTERVAL == 0:
-                torch.save(self.targetPolicyNetwork, f'Agents/NFSP_Model/id={self.id}_steps={self.update_count}_target.model')
-                torch.save(self.averagePolicyNetwork, f'Agents/NFSP_Model/id={self.id}_steps={self.update_count}_avg.model')
+            self.step_count += 1
+
+            # Update networks twice every 256 steps
+            if self.step_count % 256 == 0:
+                for i in range(2):
+                    self.update_count += 1
+                    self.learnAveragePolicyNetwork()
+                    self.learnQNetwork()
+
+                    # Q' <- Q
+                    if self.update_count % self.TARGET_POLICY_UPDATE_INTERVAL == 0:
+                        self.targetPolicyNetwork.load_state_dict(self.qNetwork.state_dict())
+
+                    # Save models 
+                    if self.update_count % self.SAVE_INTERVAL == 0:
+                        torch.save(self.targetPolicyNetwork, f'Agents/NFSP_Model/id={self.id}_steps={self.update_count}_target.model')
+                        torch.save(self.averagePolicyNetwork, f'Agents/NFSP_Model/id={self.id}_steps={self.update_count}_avg.model')
 
         self.state = next_state
 
     def select_action(self, state):
         self.update_state(state, 0, 1)
         if self.currentPolicy == self.qNetwork:
-            if random.uniform(0, 1) > (self.EPS - self.EPS * min(1, self.update_count/self.EPS_DECAY)):
+            if random.uniform(0, 1) > (self.EPS - self.EPS * min(1, self.step_count/self.EPS_DECAY)):
                 pred = self.currentPolicy(state)
                 self.action = pred.data.max(1)[1].view(1, 1)
             else:
