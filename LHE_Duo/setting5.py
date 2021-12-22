@@ -1,7 +1,6 @@
 """This setting is testing an already trained NFSP agent vs a Call Agent.
 
 """
-
 from Player import Player
 from Hand import LHEHand
 from Agents.NFSP_Agent import NFSP_Agent

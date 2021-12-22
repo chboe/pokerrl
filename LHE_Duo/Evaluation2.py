@@ -13,7 +13,7 @@ RL_LR = 0.01
 SL_LR = 0.01
 BATCH_SIZE = 256
 TARGET_POLICY_UPDATE_INTERVAL = 1000
-ANTICIPATORY_PARAM = 1 # 0 is avgPolicyNetwork, 1 is QNetwork
+ANTICIPATORY_PARAM = 0 # 0 is avgPolicyNetwork, 1 is QNetwork
 if ANTICIPATORY_PARAM == 1:
     network = 'Q'
 elif ANTICIPATORY_PARAM == 0:
@@ -27,7 +27,7 @@ EPS_DECAY = 1
 
 model_id = 2100
 step_size = 2500
-limit = 237500
+limit = 422500
 header = ['steps', 'winnings']
 
 # Play against Call Agent
