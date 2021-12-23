@@ -10,14 +10,14 @@ from Agents.Raise_Agent import Raise_Agent
 SAVE_INTERVAL = 100000 # Doesnt matter during eval
 MRL_SIZE = 100_000 # Doesnt matter during eval
 MSL_SIZE = 100_000 # Doesnt matter during eval
-RL_LR = 0.01
-SL_LR = 0.01
-BATCH_SIZE = 256
-TARGET_POLICY_UPDATE_INTERVAL = 1000
-ANTICIPATORY_PARAM = 0 # 0 is avgPolicyNetwork, 1 is QNetwork
+RL_LR = 0.01 # Doesnt matter during eval
+SL_LR = 0.01 # Doesnt matter during eval
+BATCH_SIZE = 256 # Doesnt matter during eval
+TARGET_POLICY_UPDATE_INTERVAL = 1000 # Doesnt matter during eval
+ANTICIPATORY_PARAM = 1 # 0 is avgPolicyNetwork, 1 is QNetwork
 EPS = 0.00
 EPS_DECAY = 1000
-MODEL_TO_LOAD = "Agents/NFSP_Model/id=2300_steps=1750000"
+MODEL_TO_LOAD = "Agents/NFSP_Model/id=2300_steps=2500000"
 
 agent0 = Raise_Agent()
 player0 = Player(id=0, agent=agent0)

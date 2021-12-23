@@ -1,3 +1,11 @@
+import torch
+
+m = torch.load('Agents/NFSP_Model/id=2100_steps=50000_avg.model')
+
+
+for param in m.parameters():
+    print(param.shape)
+
 # import torch
 
 

@@ -12,7 +12,7 @@ for file in os.listdir('Evaluation/'):
                 columns = row
             else:
                 steps.append(int(row[0]))
-                winnings.append(float(row[1]))
+                winnings.append(float(row[1])/10000*1000)
     
     plt.clf()
     plt.figure()
@@ -20,8 +20,8 @@ for file in os.listdir('Evaluation/'):
     plt.ticklabel_format(style='plain')
     plt.xlim(0)
     plt.axhline(0, linestyle=':')
-    plt.xlabel(columns[0])
-    plt.ylabel(columns[1])
+    plt.xlabel('Gradient descent steps')
+    plt.ylabel('mbb/hand')
     plt.title(file[:-4])
     plt.savefig(f'Figures/{file[:-4]}.jpeg')
 
