@@ -116,7 +116,6 @@ class NFSP_Agent(Agent):
         self.msl = ExponentialReservoir(self.MSL_SIZE)
 
         # Initialize Q, Q' and Avg networks.
-        self.targetPolicyNetwork = Network(NETWORK_SIZE)
         if MODEL_TO_LOAD != None:
             self.qNetwork = torch.load(MODEL_TO_LOAD + "_target.model")
             self.averagePolicyNetwork = torch.load(MODEL_TO_LOAD + "_avg.model")
@@ -126,15 +125,19 @@ class NFSP_Agent(Agent):
             self.averagePolicyNetwork = Network(NETWORK_SIZE)
             self.update_count = 0
 
+        if self.LEARN:
+            self.targetPolicyNetwork = Network(NETWORK_SIZE)
+
         # Make networks use cuda
         if use_cuda:
             self.qNetwork.cuda()
             self.targetPolicyNetwork.cuda()
             self.averagePolicyNetwork.cuda()
-
-        self.targetPolicyNetwork.load_state_dict(self.qNetwork.state_dict())
-        self.qNetworkOptimizer = optim.Adam(self.qNetwork.parameters(), RL_LR)
-        self.averagePolicyNetworkOptimizer = optim.Adam(self.averagePolicyNetwork.parameters(), SL_LR)
+            
+        if self.LEARN:
+            self.targetPolicyNetwork.load_state_dict(self.qNetwork.state_dict())
+            self.qNetworkOptimizer = optim.Adam(self.qNetwork.parameters(), RL_LR)
+            self.averagePolicyNetworkOptimizer = optim.Adam(self.averagePolicyNetwork.parameters(), SL_LR)
 
 
     def learnAveragePolicyNetwork(self):

@@ -13,7 +13,7 @@ RL_LR = 0.01
 SL_LR = 0.01
 BATCH_SIZE = 256
 TARGET_POLICY_UPDATE_INTERVAL = 1000
-ANTICIPATORY_PARAM = 0 # 0 is avgPolicyNetwork, 1 is QNetwork
+ANTICIPATORY_PARAM = 1 # 0 is avgPolicyNetwork, 1 is QNetwork
 if ANTICIPATORY_PARAM == 1:
     network = 'Q'
 elif ANTICIPATORY_PARAM == 0:
@@ -39,7 +39,7 @@ with open(f'Evaluation/model_id={model_id}_Network={network}_versus=Call_Agent.c
         MODEL_TO_LOAD = f'Agents/NFSP_Model/id={model_id}_steps={steps}'
         agent0 = Call_Agent()
         player0 = Player(id=0, agent=agent0)
-        agent1 = NFSP_Agent(1, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD, LEARN=False)
+        agent1 = NFSP_Agent(1, None, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD, LEARN=False)
         player1 = Player(id=1, agent=agent1)
         players_in = [player0, player1]
 
@@ -58,7 +58,7 @@ with open(f'Evaluation/model_id={model_id}_Network={network}_versus=Raise_Agent.
         MODEL_TO_LOAD = f'Agents/NFSP_Model/id={model_id}_steps={steps}'
         agent0 = Raise_Agent()
         player0 = Player(id=0, agent=agent0)
-        agent1 = NFSP_Agent(1, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD, LEARN=False)
+        agent1 = NFSP_Agent(1, None, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD, LEARN=False)
         player1 = Player(id=1, agent=agent1)
         players_in = [player0, player1]
 
@@ -74,12 +74,12 @@ with open(f'Evaluation/model_id={model_id}_Network={network}_versus=Itself.csv',
     writer.writerow(header)
 
     MODEL_TO_LOAD1 = f'Agents/NFSP_Model/id={model_id}_steps={limit}'
-    agent1 = NFSP_Agent(1, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD1, LEARN=False)
+    agent1 = NFSP_Agent(1, None, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD1, LEARN=False)
     player1 = Player(id=1, agent=agent1)
     
     for steps in range(step_size, limit, step_size):
         MODEL_TO_LOAD0 = f'Agents/NFSP_Model/id={model_id}_steps={steps}'
-        agent0 = NFSP_Agent(0, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD0, LEARN=False)
+        agent0 = NFSP_Agent(0, None, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD0, LEARN=False)
         player0 = Player(id=0, agent=agent0)
 
         players_in = [player0, player1]

@@ -1,23 +1,36 @@
-import torch
+# import torch
 
 
-model_strings = [
-    "Agents/NFSP_Model/id=1900_steps=500000_target.model",
-    "Agents/NFSP_Model/id=1900_steps=500000_avg.model",
-    "Agents/NFSP_Model/id=1901_steps=500000_target.model",
-    "Agents/NFSP_Model/id=1901_steps=500000_avg.model"
-]
+# model_strings = [
+#     "Agents/NFSP_Model/id=1900_steps=500000_target.model",
+#     "Agents/NFSP_Model/id=1900_steps=500000_avg.model",
+#     "Agents/NFSP_Model/id=1901_steps=500000_target.model",
+#     "Agents/NFSP_Model/id=1901_steps=500000_avg.model"
+# ]
 
-models = []
-for name in model_strings:
-    models.append(torch.load(name))
+# models = []
+# for name in model_strings:
+#     models.append(torch.load(name))
 
-for i, model in enumerate(models):
-    print("MODEL:", i)
-    for param in model.parameters():
-        if param.data.isnan().any():
-            print("NaNs found in MODEL", i)
-            print(param)
+# for i, model in enumerate(models):
+#     print("MODEL:", i)
+#     for param in model.parameters():
+#         if param.data.isnan().any():
+#             print("NaNs found in MODEL", i)
+#             print(param)
+
+# import time
+
+# xd = []
+# for i in range(3_000_000):
+#     xd.append(0)
+
+
+# before = time.time()
+# for i in range(100):
+#     xd.append(0)
+#     del xd[0]
+# print(time.time() - before)
 
 
 ## TEST TIMES FOR DATA STRUCTURES ##
