@@ -13,7 +13,7 @@ RL_LR = 0.01
 SL_LR = 0.01
 BATCH_SIZE = 256
 TARGET_POLICY_UPDATE_INTERVAL = 1000
-ANTICIPATORY_PARAM = 1 # 0 is avgPolicyNetwork, 1 is QNetwork
+ANTICIPATORY_PARAM = 0 # 0 is avgPolicyNetwork, 1 is QNetwork
 if ANTICIPATORY_PARAM == 1:
     network = 'Q'
 elif ANTICIPATORY_PARAM == 0:
@@ -25,8 +25,8 @@ EPS = 0.00
 EPS_DECAY = 1
 
 
-model_id = 2000
-limit = 7_000_000
+model_id = 2300
+limit = 3_700_000
 header = ['steps', 'winnings']
 
 # Play against Call Agent
@@ -72,20 +72,21 @@ with open(f'Evaluation/model_id={model_id}_Network={network}_versus=Itself.csv',
     writer = csv.writer(f)
     writer.writerow(header)
 
+    MODEL_TO_LOAD1 = f'Agents/NFSP_Model/id={model_id}_steps={limit}'
+    agent1 = NFSP_Agent(1, None, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD1, LEARN=False)
+    player1 = Player(id=1, agent=agent1)
+    
     for steps in range(50000, limit, 50000):
         MODEL_TO_LOAD0 = f'Agents/NFSP_Model/id={model_id}_steps={steps}'
         agent0 = NFSP_Agent(0, None, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD0, LEARN=False)
         player0 = Player(id=0, agent=agent0)
-
-        MODEL_TO_LOAD1 = f'Agents/NFSP_Model/id={model_id}_steps={limit}'
-        agent1 = NFSP_Agent(1, None, SAVE_INTERVAL, MRL_SIZE, MSL_SIZE, RL_LR, SL_LR, BATCH_SIZE, TARGET_POLICY_UPDATE_INTERVAL, ANTICIPATORY_PARAM, EPS, EPS_DECAY, MODEL_TO_LOAD1, LEARN=False)
-        player1 = Player(id=1, agent=agent1)
         players_in = [player0, player1]
-
+        
         for episodes in range(10000):
             LHE = LHEHand(0.5, players_in[:])
             LHE.play_hand()
 
         writer.writerow([steps, player1.total_winnings])
+        player1.total_winnings = 0 # Reset its winnings
 
 
